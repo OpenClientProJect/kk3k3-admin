@@ -37,7 +37,7 @@
         <el-table-column label="封面" width="120" align="center">
           <template #default="scope">
             <el-image 
-              :src="scope.row.coverUrl" 
+              :src="scope.row.cover_url"
               :preview-src-list="[scope.row.coverUrl]"
               class="video-cover" 
               fit="cover"
@@ -52,28 +52,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="uploaderName" label="上传者" width="120" align="center" />
         <el-table-column prop="category" label="分类" width="100" align="center" />
-        <el-table-column prop="views" label="播放量" width="100" align="center" />
         <el-table-column prop="createTime" label="创建时间" width="170" align="center">
           <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
+            {{ formatDateTime(scope.row.create_time) }}
           </template>
         </el-table-column>
       </el-table>
-      
-      <!-- 分页 -->
-      <div class="pagination-container">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
     </el-card>
     
     <!-- 拒绝原因对话框 -->
@@ -212,7 +197,7 @@ const myVideoTotal = ref(0)
 const uploadForm = reactive({
   title: '',
   description: '',
-  coverUrl: '',
+  cover_url: '',
   videoFile: null,
   category: '',
   tags: []

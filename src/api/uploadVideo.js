@@ -6,7 +6,7 @@ import request from '../utils/request'
  */
 export function saveVideo(data) {
     return request({
-        url: '/api/admin/video/save',
+        url: '/admin/video/save',
         method: 'post',
         data
     })
@@ -22,7 +22,7 @@ export function uploadCover(file) {
     formData.append('file', file)
 
     return request({
-        url: '/api/admin/video/cover',
+        url: '/admin/video/cover',
         method: 'post',
         headers: {
             'Content-Type': 'multipart/form-data'
@@ -42,7 +42,7 @@ export function uploadVideo(file) {
     formData.append('file', file)
 
     return request({
-        url: '/api/admin/video/upload',
+        url: '/admin/video/upload',
         method: 'post',
         headers: {
             'Content-Type': 'multipart/form-data'

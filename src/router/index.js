@@ -18,12 +18,6 @@ const routes = [
         meta: { title: '视频管理' }
       },
       {
-        path: '/video-review',
-        name: 'VideoReview',
-        component: () => import('../views/VideoReview.vue'),
-        meta: { title: '视频审核' }
-      },
-      {
         path: '/video-detail/:id',
         name: 'VideoDetail',
         component: () => import('../views/VideoDetail.vue'),

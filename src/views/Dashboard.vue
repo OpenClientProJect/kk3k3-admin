@@ -18,22 +18,6 @@
           </div>
         </el-card>
       </el-col>
-      
-      <el-col :xs="24" :sm="12" :md="8">
-        <el-card shadow="hover" class="stats-card">
-          <div class="stats-icon pending-icon">
-            <el-icon><Timer /></el-icon>
-          </div>
-          <div class="stats-info">
-            <div class="stats-value">{{ stats.pendingVideos || 0 }}</div>
-            <div class="stats-label">待审核视频</div>
-          </div>
-          <div v-if="stats.pendingVideos > 0" class="stats-action">
-            <el-button type="primary" link @click="goToVideoReview">去审核</el-button>
-          </div>
-        </el-card>
-      </el-col>
-      
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stats-card">
           <div class="stats-icon users-icon">
@@ -47,135 +31,258 @@
       </el-col>
     </el-row>
     
-    <!-- 最近待审核视频 -->
-    <el-card class="box-card recent-card">
-      <template #header>
-        <div class="card-header">
-          <span>最近待审核视频</span>
-          <el-button v-if="recentPendingVideos.length > 0" type="primary" link @click="goToVideoReview">查看全部</el-button>
-        </div>
-      </template>
-      
-      <el-table v-loading="loading" :data="recentPendingVideos" style="width: 100%">
-        <el-table-column label="封面" width="120" align="center">
-          <template #default="scope">
-            <el-image 
-              :src="scope.row.coverUrl" 
-              class="video-cover" 
-              fit="cover"
-              lazy
-            >
-              <template #error>
-                <div class="image-error">
-                  <el-icon><Picture /></el-icon>
-                </div>
-              </template>
-            </el-image>
-          </template>
-        </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="uploaderName" label="上传者" width="120" align="center" />
-        <el-table-column prop="createTime" label="上传时间" width="170" align="center">
-          <template #default="scope">
-            {{ formatDateTime(scope.row.createTime) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
-          <template #default="scope">
-            <el-button @click="handlePreview(scope.row.id)" type="primary" link>预览</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <el-empty v-if="recentPendingVideos.length === 0 && !loading" description="暂无待审核视频" />
-    </el-card>
+    <!-- 新增图表组件 -->
+    <el-row :gutter="18" class="chart-row">
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover" class="chart-card">
+          <div class="card-header">
+            <h3>最近一周视频上传</h3>
+          </div>
+          <div class="chart-container" ref="videosChartRef"></div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :lg="12">
+        <el-card shadow="hover" class="chart-card">
+          <div class="card-header">
+            <h3>最近一周用户注册</h3>
+          </div>
+          <div class="chart-container" ref="usersChartRef"></div>
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh, VideoCamera, Timer, User, View, Picture } from '@element-plus/icons-vue'
 import adminApi from '../api/admin'
-import videoApi from '../api/video'
+import * as echarts from 'echarts'
 
 const router = useRouter()
+const videosChartRef = ref(null)
+const usersChartRef = ref(null)
+let videosChart = null
+let usersChart = null
 
 // 加载状态
-const loading = ref(false)
 
 // 统计数据
 const stats = reactive({
   totalVideos: 0,
-  pendingVideos: 0,
   totalUsers: 0,
+  lastWeekVideos: [],
+  lastWeekUsers: []
 })
 
-// 最近待审核视频
-const recentPendingVideos = ref([])
+// 刷新数据
+const refreshData = () => {
+  fetchStats()
+}
 
 // 获取统计数据
 const fetchStats = async () => {
   try {
     const response = await adminApi.getStats()
     Object.assign(stats, response.data)
+    // 渲染图表
+    initCharts()
   } catch (error) {
     console.error('获取统计数据失败', error)
   }
 }
 
-// 获取最近待审核视频
-const fetchRecentPendingVideos = async () => {
-  loading.value = true
-  try {
-    const response = await videoApi.getPendingVideos({
-      page: 1,
-      size: 5
-    })
-    recentPendingVideos.value = response.data.videos || []
-  } catch (error) {
-    console.error('获取最近待审核视频失败', error)
-  } finally {
-    loading.value = false
+// 初始化图表
+const initCharts = () => {
+  if (videosChartRef.value && stats.lastWeekVideos?.length) {
+    // 创建视频图表
+    if (!videosChart) {
+      videosChart = echarts.init(videosChartRef.value)
+    }
+    
+    const dates = stats.lastWeekVideos.map(item => item.date)
+    const counts = stats.lastWeekVideos.map(item => item.count)
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis'
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLine: {
+          lineStyle: {
+            color: '#909399'
+          }
+        },
+        axisLabel: {
+          color: '#606266'
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: {
+          show: false
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          color: '#606266'
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#EBEEF5'
+          }
+        }
+      },
+      series: [
+        {
+          data: counts,
+          type: 'line',
+          smooth: true,
+          symbolSize: 8,
+          itemStyle: {
+            color: '#409EFF'
+          },
+          lineStyle: {
+            width: 3,
+            color: '#409EFF'
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                {
+                  offset: 0,
+                  color: 'rgba(64, 158, 255, 0.3)'
+                },
+                {
+                  offset: 1,
+                  color: 'rgba(64, 158, 255, 0.1)'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+    
+    videosChart.setOption(option)
+  }
+  
+  if (usersChartRef.value && stats.lastWeekUsers?.length) {
+    // 创建用户图表
+    if (!usersChart) {
+      usersChart = echarts.init(usersChartRef.value)
+    }
+    
+    const dates = stats.lastWeekUsers.map(item => item.date)
+    const counts = stats.lastWeekUsers.map(item => item.count)
+    
+    const option = {
+      tooltip: {
+        trigger: 'axis'
+      },
+      xAxis: {
+        type: 'category',
+        data: dates,
+        axisLine: {
+          lineStyle: {
+            color: '#909399'
+          }
+        },
+        axisLabel: {
+          color: '#606266'
+        }
+      },
+      yAxis: {
+        type: 'value',
+        axisLine: {
+          show: false
+        },
+        axisTick: {
+          show: false
+        },
+        axisLabel: {
+          color: '#606266'
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#EBEEF5'
+          }
+        }
+      },
+      series: [
+        {
+          data: counts,
+          type: 'line',
+          smooth: true,
+          symbolSize: 8,
+          itemStyle: {
+            color: '#67C23A'
+          },
+          lineStyle: {
+            width: 3,
+            color: '#67C23A'
+          },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                {
+                  offset: 0,
+                  color: 'rgba(103, 194, 58, 0.3)'
+                },
+                {
+                  offset: 1,
+                  color: 'rgba(103, 194, 58, 0.1)'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+    
+    usersChart.setOption(option)
   }
 }
 
-// 刷新数据
-const refreshData = async () => {
-  await Promise.all([fetchStats(), fetchRecentPendingVideos()])
-}
-
-// 格式化数字（添加千位分隔符）
-const formatNumber = (num) => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-}
-
-// 格式化日期时间
-const formatDateTime = (dateTime) => {
-  if (!dateTime) return ''
-  const date = new Date(dateTime)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// 跳转到视频审核页面
-const goToVideoReview = () => {
-  router.push('/video-review')
-}
-
-// 预览视频
-const handlePreview = (id) => {
-  router.push(`/video-detail/${id}`)
+// 窗口大小改变时重置图表大小
+const handleResize = () => {
+  if (videosChart) {
+    videosChart.resize()
+  }
+  if (usersChart) {
+    usersChart.resize()
+  }
 }
 
 // 组件挂载后获取数据
 onMounted(() => {
-  refreshData()
+  fetchStats()
+  window.addEventListener('resize', handleResize)
+})
+
+// 组件卸载时移除事件监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (videosChart) {
+    videosChart.dispose()
+  }
+  if (usersChart) {
+    usersChart.dispose()
+  }
 })
 </script>
 
@@ -271,36 +378,38 @@ onMounted(() => {
   background-color: #F56C6C;
 }
 
-.recent-card {
+/* 图表样式 */
+.chart-row {
   margin-bottom: 20px;
 }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.chart-card {
+  margin-bottom: 20px;
 }
 
-.video-cover {
-  width: 100px;
-  height: 56px;
-  border-radius: 4px;
+.chart-card .card-header {
+  margin-bottom: 15px;
 }
 
-.image-error {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.chart-card .card-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.chart-container {
+  height: 300px;
   width: 100%;
-  height: 100%;
-  background-color: #f5f7fa;
-  color: #909399;
-  font-size: 20px;
 }
 
 @media (max-width: 768px) {
   .stats-row .el-col {
     margin-bottom: 15px;
+  }
+  
+  .chart-container {
+    height: 250px;
   }
 }
 </style> 

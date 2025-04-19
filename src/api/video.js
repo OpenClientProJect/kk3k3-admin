@@ -31,11 +31,10 @@ const videoApi = {
 
   /**
    * 获取所有视频列表
-   * @param {Object} params 查询参数 {page, size, status, keyword}
    * @returns {Promise} Promise对象
    */
-  getAllVideos(params) {
-    return get('/admin/video/list', params)
+  getAllVideos() {
+    return get('/admin/video/list')
   },
 
   /**
