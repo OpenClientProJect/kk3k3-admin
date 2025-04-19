@@ -34,14 +34,6 @@ const adminApi = {
     return get('/admin/stats')
   },
 
-  /**
-   * 获取登录日志列表
-   * @param {Object} params 查询参数
-   * @returns {Promise} Promise对象
-   */
-  getLoginLogs(params) {
-    return get('/admin/loginLogs', params)
-  }
 }
 
 export default adminApi 

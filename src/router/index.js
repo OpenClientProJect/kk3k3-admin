@@ -17,12 +17,6 @@ const routes = [
         component: () => import('../views/Videos.vue'),
         meta: { title: '视频管理' }
       },
-      {
-        path: '/video-detail/:id',
-        name: 'VideoDetail',
-        component: () => import('../views/VideoDetail.vue'),
-        meta: { title: '视频详情' }
-      }
     ]
   },
   {

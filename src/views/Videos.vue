@@ -7,25 +7,6 @@
             <el-icon><Plus /></el-icon> 发布新视频
           </el-button>
           <div class="right">
-            <el-input
-              v-model="query.keyword"
-              placeholder="输入标题或描述搜索"
-              class="search-input"
-              clearable
-              @keyup.enter="handleSearch"
-            >
-              <template #append>
-                <el-button :icon="Search" @click="handleSearch" />
-              </template>
-            </el-input>
-            
-            <el-select v-model="query.status" placeholder="状态筛选" clearable @change="fetchVideos">
-              <el-option label="全部" value="" />
-              <el-option label="正常" :value="1" />
-              <el-option label="审核中" :value="2" />
-              <el-option label="已下架" :value="3" />
-            </el-select>
-            
             <el-button @click="fetchVideos" type="primary" size="default" :icon="Refresh">刷新</el-button>
           </div>
         </div>
@@ -58,10 +39,42 @@
             {{ formatDateTime(scope.row.create_time) }}
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="200" align="center">
+          <template #default="scope">
+            <el-dropdown @command="(cmd) => handleCommand(cmd, scope.row)" trigger="click">
+              <el-button size="small" type="primary" text :icon="ArrowDown">
+                更多
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item
+                    divided
+                    command="delete"
+                    style="color: #F56C6C"
+                  >
+                    删除视频
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </template>
+        </el-table-column>
       </el-table>
+      
+      <div class="pagination-container">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          v-model:page-size="query.size"
+          v-model:current-page="query.page"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </el-card>
     
-    <!-- 拒绝原因对话框 -->
     <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="30%">
       <el-form :model="rejectForm" label-width="80px">
         <el-form-item label="拒绝原因" required>
@@ -192,6 +205,18 @@ const tagInput = ref('')
 const coverPreview = ref('')
 const myVideoList = ref([])
 const myVideoTotal = ref(0)
+
+// 表单验证规则
+const uploadRules = {
+  title: [
+    { required: true, message: '请输入视频标题', trigger: 'blur' },
+    { min: 2, max: 50, message: '标题长度在2到50个字符之间', trigger: 'blur' }
+  ],
+  description: [
+    { required: true, message: '请输入视频描述', trigger: 'blur' },
+    { min: 5, max: 2000, message: '描述长度在5到2000个字符之间', trigger: 'blur' }
+  ]
+}
 
 // 发布视频表单
 const uploadForm = reactive({
@@ -384,41 +409,11 @@ const rejectForm = reactive({
   reason: ''
 })
 
-// 加载我的视频列表
-const loadMyVideos = async (page = 1) => {
-  loading.value = true
-  try {
-    const response = await getMyVideos(page, 10)
-
-    if (response.success) {
-      myVideoList.value = response.data.videos
-      myVideoTotal.value = response.data.total
-      // 更新用户统计
-      userStats.videoCount = myVideoTotal.value
-    } else {
-      ElMessage.error('获取视频列表失败: ' + response.message)
-      myVideoList.value = []
-      myVideoTotal.value = 0
-    }
-
-    loading.value = false
-  } catch (error) {
-    ElMessage.error('获取视频列表失败，请稍后重试')
-    loading.value = false
-    myVideoList.value = []
-    myVideoTotal.value = 0
-  }
-}
 // 获取视频列表
 const fetchVideos = async () => {
   loading.value = true
   try {
-    const response = await videoApi.getAllVideos({
-      page: query.page,
-      size: query.size,
-      keyword: query.keyword,
-      status: query.status
-    })
+    const response = await videoApi.getAllVideos({})
     videos.value = response.data.videos
     total.value = response.data.total
   } catch (error) {
@@ -461,25 +456,6 @@ const handleCommand = (command, row) => {
   }
 }
 
-// 审核通过
-const handleApprove = async (id) => {
-  ElMessageBox.confirm('确认审核通过该视频?', '提示', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消',
-    type: 'info'
-  }).then(async () => {
-    try {
-      await videoApi.reviewVideo(id, { status: 1 })
-      ElMessage.success('审核通过成功')
-      fetchVideos()
-    } catch (error) {
-      console.error('审核通过失败', error)
-      ElMessage.error('审核通过失败')
-    }
-  }).catch(() => {
-    // 取消操作
-  })
-}
 
 // 拒绝对话框
 const handleReject = (id) => {
@@ -512,26 +488,6 @@ const confirmReject = async () => {
   }
 }
 
-// 更改视频状态
-const handleUpdateStatus = async (id, status) => {
-  const statusText = status === 1 ? '上架' : '下架'
-  ElMessageBox.confirm(`确认${statusText}该视频?`, '提示', {
-    confirmButtonText: '确认',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await videoApi.reviewVideo(id, { status })
-      ElMessage.success(`${statusText}成功`)
-      fetchVideos()
-    } catch (error) {
-      console.error(`${statusText}失败`, error)
-      ElMessage.error(`${statusText}失败`)
-    }
-  }).catch(() => {
-    // 取消操作
-  })
-}
 
 // 删除视频
 const handleDelete = async (id) => {
@@ -543,7 +499,7 @@ const handleDelete = async (id) => {
     try {
       await videoApi.deleteVideo(id)
       ElMessage.success('删除成功')
-      fetchVideos()
+      await fetchVideos()
     } catch (error) {
       console.error('删除失败', error)
       ElMessage.error('删除失败')
@@ -578,27 +534,6 @@ const formatDateTime = (dateTime) => {
   })
 }
 
-// 获取状态文本
-const getStatusText = (status) => {
-  const statusMap = {
-    0: '处理中',
-    1: '正常',
-    2: '审核中',
-    3: '已下架'
-  }
-  return statusMap[status] || '未知'
-}
-
-// 获取状态类型
-const getStatusType = (status) => {
-  const typeMap = {
-    0: 'info',
-    1: 'success',
-    2: 'warning',
-    3: 'danger'
-  }
-  return typeMap[status] || 'info'
-}
 
 // 组件挂载后获取视频列表
 onMounted(() => {
@@ -662,7 +597,6 @@ onMounted(() => {
   }
 }
 
-
 .cover-uploader:hover {
   border-color: #409eff;
 }
@@ -680,6 +614,38 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.tag-item {
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.button-new-tag {
+  margin-bottom: 10px;
+  height: 32px;
+  line-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.tag-input {
+  width: 100px;
+  margin-right: 10px;
+  vertical-align: bottom;
+}
+
+.cover-uploader .el-upload {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  width: 178px;
+  height: 178px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 </style> 
