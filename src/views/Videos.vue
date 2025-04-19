@@ -4,36 +4,41 @@
       <template #header>
         <div class="card-header">
           <el-button type="success" @click="showUploadDialog = true">
-            <el-icon><Plus /></el-icon> 发布新视频
+            <el-icon>
+              <Plus/>
+            </el-icon>
+            发布新视频
           </el-button>
           <div class="right">
             <el-button @click="fetchVideos" type="primary" size="default" :icon="Refresh">刷新</el-button>
           </div>
         </div>
       </template>
-      
+
       <el-table v-loading="loading" :data="videos" style="width: 100%" border>
-        <el-table-column type="index" label="#" width="60" align="center" />
-        <el-table-column prop="id" label="ID" width="80" align="center" />
+        <el-table-column type="index" label="#" width="60" align="center"/>
+        <el-table-column prop="id" label="ID" width="80" align="center"/>
         <el-table-column label="封面" width="120" align="center">
           <template #default="scope">
-            <el-image 
-              :src="scope.row.cover_url"
-              :preview-src-list="[scope.row.coverUrl]"
-              class="video-cover" 
-              fit="cover"
-              lazy
+            <el-image
+                :src="scope.row.cover_url"
+                :preview-src-list="[scope.row.coverUrl]"
+                class="video-cover"
+                fit="cover"
+                lazy
             >
               <template #error>
                 <div class="image-error">
-                  <el-icon><Picture /></el-icon>
+                  <el-icon>
+                    <Picture/>
+                  </el-icon>
                 </div>
               </template>
             </el-image>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="category" label="分类" width="100" align="center" />
+        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip/>
+        <el-table-column prop="category" label="分类" width="100" align="center"/>
         <el-table-column prop="createTime" label="创建时间" width="170" align="center">
           <template #default="scope">
             {{ formatDateTime(scope.row.create_time) }}
@@ -48,9 +53,9 @@
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item
-                    divided
-                    command="delete"
-                    style="color: #F56C6C"
+                      divided
+                      command="delete"
+                      style="color: #F56C6C"
                   >
                     删除视频
                   </el-dropdown-item>
@@ -60,29 +65,29 @@
           </template>
         </el-table-column>
       </el-table>
-      
+
       <div class="pagination-container">
         <el-pagination
-          background
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="total"
-          :page-sizes="[10, 20, 50, 100]"
-          v-model:page-size="query.size"
-          v-model:current-page="query.page"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
+            background
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            :page-sizes="[10, 20, 50, 100]"
+            v-model:page-size="query.size"
+            v-model:current-page="query.page"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
         />
       </div>
     </el-card>
-    
+
     <el-dialog v-model="rejectDialogVisible" title="拒绝原因" width="30%">
       <el-form :model="rejectForm" label-width="80px">
         <el-form-item label="拒绝原因" required>
           <el-input
-            v-model="rejectForm.reason"
-            type="textarea"
-            :rows="4"
-            placeholder="请输入拒绝原因，将通知用户"
+              v-model="rejectForm.reason"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入拒绝原因，将通知用户"
           />
         </el-form-item>
       </el-form>
@@ -103,11 +108,11 @@
     >
       <el-form ref="uploadFormRef" :model="uploadForm" :rules="uploadRules" label-width="100px">
         <el-form-item label="视频标题" prop="title">
-          <el-input v-model="uploadForm.title" placeholder="请输入视频标题" />
+          <el-input v-model="uploadForm.title" placeholder="请输入视频标题"/>
         </el-form-item>
 
         <el-form-item label="视频描述" prop="description">
-          <el-input v-model="uploadForm.description" type="textarea" :rows="4" placeholder="请输入视频描述" />
+          <el-input v-model="uploadForm.description" type="textarea" :rows="4" placeholder="请输入视频描述"/>
         </el-form-item>
 
         <el-row :gutter="20">
@@ -119,8 +124,10 @@
                   :auto-upload="false"
                   :show-file-list="false"
                   :on-change="handleCoverChange">
-                <img v-if="coverPreview" :src="coverPreview" class="cover-preview" />
-                <el-icon v-else class="cover-uploader-icon"><Plus /></el-icon>
+                <img v-if="coverPreview" :src="coverPreview" class="cover-preview"/>
+                <el-icon v-else class="cover-uploader-icon">
+                  <Plus/>
+                </el-icon>
               </el-upload>
               <div class="el-upload__tip">
                 点击上传封面图片，支持jpg、png格式
@@ -187,8 +194,8 @@
 
 <script setup>
 import {ref, reactive, onMounted, nextTick} from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import {useRouter} from 'vue-router'
+import {ElMessage, ElMessageBox} from 'element-plus'
 import {Refresh, VideoPlay, Search, Picture, ArrowDown, Plus} from '@element-plus/icons-vue'
 import videoApi from '../api/video'
 import {saveVideo, uploadCover, uploadVideo} from "@/api/uploadVideo.js";
@@ -209,12 +216,12 @@ const myVideoTotal = ref(0)
 // 表单验证规则
 const uploadRules = {
   title: [
-    { required: true, message: '请输入视频标题', trigger: 'blur' },
-    { min: 2, max: 50, message: '标题长度在2到50个字符之间', trigger: 'blur' }
+    {required: true, message: '请输入视频标题', trigger: 'blur'},
+    {min: 2, max: 50, message: '标题长度在2到50个字符之间', trigger: 'blur'}
   ],
   description: [
-    { required: true, message: '请输入视频描述', trigger: 'blur' },
-    { min: 5, max: 2000, message: '描述长度在5到2000个字符之间', trigger: 'blur' }
+    {required: true, message: '请输入视频描述', trigger: 'blur'},
+    {min: 5, max: 2000, message: '描述长度在5到2000个字符之间', trigger: 'blur'}
   ]
 }
 
@@ -334,62 +341,57 @@ const handleUpload = async () => {
   await uploadFormRef.value.validate(async (valid) => {
     if (!valid) return
 
-    try {
-      uploading.value = true
+    uploading.value = true
 
-      // 1. 上传视频文件
-      const videoResponse = await uploadVideo(uploadForm.videoFile)
+    // 1. 上传视频文件
+    const videoResponse = await uploadVideo(uploadForm.videoFile)
 
-      if (!videoResponse.success) {
-        ElMessage.error('视频上传失败: ' + videoResponse.message)
-        uploading.value = false
-        return
-      }
-
-      // 2. 上传封面图片
-      let coverResponse = null
-      if (uploadForm.coverFile) {
-        coverResponse = await uploadCover(uploadForm.coverFile)
-
-        if (!coverResponse.success) {
-          ElMessage.error('封面上传失败: ' + coverResponse.message)
-          uploading.value = false
-          return
-        }
-      }
-
-      // 3. 保存视频信息
-      const videoData = {
-        title: uploadForm.title,
-        description: uploadForm.description,
-        category: uploadForm.category,
-        videoPath: videoResponse.data.relativePath,
-        videoUrl: videoResponse.data.videoUrl,
-        coverPath: coverResponse ? coverResponse.data.relativePath : null,
-        coverUrl: coverResponse ? coverResponse.data.coverUrl : null,
-        tags: uploadForm.tags.join(',')
-      }
-
-      const saveResponse = await saveVideo(videoData)
-
-      if (!saveResponse.success) {
-        ElMessage.error('视频信息保存失败: ' + saveResponse.message)
-        uploading.value = false
-        return
-      }
-
-      ElMessage.success('视频发布成功')
-      showUploadDialog.value = false
-      resetUploadForm()
-
-      // 加载我的视频列表
-      await loadMyVideos()
+    if (!videoResponse.success) {
+      ElMessage.error('视频上传失败: ' + videoResponse.message)
       uploading.value = false
-    } catch (error) {
-      console.error('视频上传失败:', error)
-      ElMessage.error('视频上传失败，请稍后重试')
-      uploading.value = false
+      return
     }
+
+    // 2. 上传封面图片
+    let coverResponse = null
+    if (uploadForm.coverFile) {
+      coverResponse = await uploadCover(uploadForm.coverFile)
+
+      if (!coverResponse.success) {
+        ElMessage.error('封面上传失败: ' + coverResponse.message)
+        uploading.value = false
+        return
+      }
+    }
+
+    // 3. 保存视频信息
+    const videoData = {
+      title: uploadForm.title,
+      description: uploadForm.description,
+      category: uploadForm.category,
+      videoPath: videoResponse.data.relativePath,
+      videoUrl: videoResponse.data.videoUrl,
+      coverPath: coverResponse ? coverResponse.data.relativePath : null,
+      coverUrl: coverResponse ? coverResponse.data.coverUrl : null,
+      tags: uploadForm.tags.join(',')
+    }
+
+    const saveResponse = await saveVideo(videoData)
+
+    if (!saveResponse.success) {
+      ElMessage.error('视频信息保存失败: ' + saveResponse.message)
+      uploading.value = false
+      return
+    }
+
+    ElMessage.success('视频发布成功')
+    showUploadDialog.value = false
+    resetUploadForm()
+
+    // 加载我的视频列表
+    await loadMyVideos()
+    uploading.value = false
+    uploading.value = false
   })
 }
 
@@ -470,7 +472,7 @@ const confirmReject = async () => {
     ElMessage.warning('请输入拒绝原因')
     return
   }
-  
+
   rejectSubmitting.value = true
   try {
     await videoApi.reviewVideo(rejectForm.id, {
@@ -590,7 +592,7 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .card-header .right {
     margin-top: 10px;
     flex-wrap: wrap;

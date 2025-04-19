@@ -66,7 +66,6 @@ const usersChartRef = ref(null)
 let videosChart = null
 let usersChart = null
 
-// 加载状态
 
 // 统计数据
 const stats = reactive({
