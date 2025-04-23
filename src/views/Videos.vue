@@ -143,7 +143,6 @@
                   :auto-upload="false"
                   :show-file-list="true"
                   :limit="1"
-                  :on-change="handleVideoChange"
                   :on-exceed="handleExceed"
                   :before-remove="handleBeforeRemove">
                 <el-button type="primary">选择视频文件</el-button>
@@ -279,45 +278,6 @@ const handleAddTag = () => {
   }
   tagInputVisible.value = false
   tagInput.value = ''
-}
-// 处理封面图片上传
-const handleCoverChange = (file) => {
-  const isImage = file.raw.type.indexOf('image/') !== -1
-  const isLt2M = file.raw.size / 1024 / 1024 < 20
-
-  if (!isImage) {
-    ElMessage.error('封面图片只能是图片格式!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('封面图片大小不能超过 20MB!')
-    return false
-  }
-
-  // 显示预览
-  uploadForm.coverFile = file.raw
-  const reader = new FileReader()
-  reader.readAsDataURL(file.raw)
-  reader.onload = () => {
-    coverPreview.value = reader.result
-  }
-}
-
-// 处理视频文件上传
-const handleVideoChange = (file) => {
-  const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
-  const isLt500M = file.raw.size / 1024 / 1024 < 500
-
-  if (!isVideo) {
-    ElMessage.error('请上传正确的视频格式!')
-    return false
-  }
-  if (!isLt500M) {
-    ElMessage.error('视频大小不能超过 500MB!')
-    return false
-  }
-
-  uploadForm.videoFile = file.raw
 }
 
 // 重置上传表单

@@ -16,13 +16,13 @@ export default defineConfig({
     }
   },
   server: {
-    port: 4000,
-    proxy: {
-      // 代理所有/api开头的请求到后端服务
-      '/api': {
-        target: 'http://localhost:8080', // 修改为您的实际后端地址
-        changeOrigin: true,
-      }
-    }
+    port: 4100,
+    // proxy: {
+    //   // 代理所有/api开头的请求到后端服务
+    //   '/api': {
+    //     target: 'http://localhost:8080', // 修改为您的实际后端地址
+    //     changeOrigin: true,
+    //   }
+    // }
   },
 })
