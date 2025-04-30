@@ -160,6 +160,12 @@
           </el-button>
           <div class="el-upload__tip">最多添加5个标签</div>
         </el-form-item>
+        
+        <!-- 上传进度条 -->
+        <el-form-item v-if="uploading && uploadProgress > 0" label="上传进度">
+          <el-progress :percentage="uploadProgress" :format="percentFormat" />
+          <div class="upload-status">{{ uploadedChunks.value }}/{{ totalChunks.value }} 分片已上传</div>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -217,6 +223,12 @@
             </template>
           </el-upload>
         </el-form-item>
+        
+        <!-- 上传进度条 -->
+        <el-form-item v-if="episodeUploading && uploadProgress > 0" label="上传进度">
+          <el-progress :percentage="uploadProgress" :format="percentFormat" />
+          <div class="upload-status">{{ uploadedChunks.value }}/{{ totalChunks.value }} 分片已上传</div>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -235,7 +247,7 @@ import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {Refresh, VideoPlay, Search, Picture, ArrowDown, Plus} from '@element-plus/icons-vue'
 import videoApi from '../api/video'
-import {saveVideo, uploadCover, uploadVideo} from "@/api/uploadVideo.js";
+import {saveVideo, uploadCover, uploadVideo, initChunkUpload, uploadChunk, mergeChunks} from "@/api/uploadVideo.js";
 
 const showUploadDialog = ref(false)
 const showEpisodeDialog = ref(false)
@@ -263,6 +275,15 @@ const tagInput = ref('')
 const coverPreview = ref('')
 const myVideoList = ref([])
 const myVideoTotal = ref(0)
+const uploadProgress = ref(0)
+const chunkSize = 5 * 1024 * 1024 // 5MB 分片大小
+const totalChunks = ref(0)
+const uploadedChunks = ref(0)
+
+// 格式化上传进度百分比
+const percentFormat = (percentage) => {
+  return percentage === 100 ? '完成' : `${percentage}%`
+}
 
 // 表单验证规则
 const uploadRules = {
@@ -368,18 +389,123 @@ const handleCoverChange = (file) => {
 // 处理视频文件上传
 const handleVideoChange = (file) => {
   const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
-  const isLt500M = file.raw.size / 1024 / 1024 < 500
+  const isLtLimit = file.raw.size / 1024 / 1024 < 1000 // 限制最大1GB
 
   if (!isVideo) {
     ElMessage.error('请上传正确的视频格式!')
     return false
   }
-  if (!isLt500M) {
-    ElMessage.error('视频大小不能超过 500MB!')
+  if (!isLtLimit) {
+    ElMessage.error('视频大小不能超过 1GB!')
     return false
   }
 
   uploadForm.videoFile = file.raw
+  // 计算所需的分片数量
+  totalChunks.value = Math.ceil(file.raw.size / chunkSize)
+}
+
+// 上传单个分片
+const uploadSingleChunk = async (chunk, index, uploadId, fileName) => {
+  const formData = {
+    chunk: chunk,
+    index: index,
+    uploadId: uploadId,
+    fileName: fileName
+  }
+  
+  try {
+    await uploadChunk(formData, (progressEvent) => {
+      // 单个分片的上传进度处理
+      const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+      console.log(`分片 ${index + 1}/${totalChunks.value} 上传进度: ${percentCompleted}%`)
+    })
+    
+    uploadedChunks.value++
+    uploadProgress.value = Math.floor((uploadedChunks.value / totalChunks.value) * 100)
+    
+    return true
+  } catch (error) {
+    console.error(`分片 ${index} 上传失败:`, error)
+    return false
+  }
+}
+
+// 上传视频（分片处理）
+const uploadVideoWithChunks = async (file) => {
+  if (!file) return null
+  
+  // 判断是否需要分片上传
+  if (file.size <= 50 * 1024 * 1024) {
+    // 小于50MB，使用普通上传
+    return await uploadVideo(file)
+  }
+  
+  try {
+    // 初始化分片上传
+    const initResponse = await initChunkUpload({
+      fileName: file.name,
+      fileSize: file.size,
+      chunkSize: chunkSize,
+      totalChunks: totalChunks.value
+    })
+    
+    if (!initResponse.success) {
+      ElMessage.error('初始化分片上传失败: ' + initResponse.message)
+      return null
+    }
+    
+    const uploadId = initResponse.data.uploadId
+    uploadedChunks.value = 0
+    uploadProgress.value = 0
+    
+    // 创建分片并上传
+    const chunks = []
+    for (let i = 0; i < totalChunks.value; i++) {
+      const start = i * chunkSize
+      const end = Math.min(file.size, start + chunkSize)
+      chunks.push(file.slice(start, end))
+    }
+    
+    // 并发上传分片，限制并发数为3
+    const concurrencyLimit = 3
+    const results = []
+    
+    for (let i = 0; i < chunks.length; i += concurrencyLimit) {
+      const chunkPromises = chunks
+        .slice(i, i + concurrencyLimit)
+        .map((chunk, index) => uploadSingleChunk(chunk, i + index, uploadId, file.name))
+      
+      const chunkResults = await Promise.all(chunkPromises)
+      results.push(...chunkResults)
+      
+      // 如果有分片上传失败，中断上传
+      if (chunkResults.includes(false)) {
+        ElMessage.error('视频上传失败，请重试')
+        return null
+      }
+    }
+    
+    // 合并分片
+    const mergeResponse = await mergeChunks({
+      uploadId: uploadId,
+      fileName: file.name,
+      totalChunks: totalChunks.value
+    })
+    
+    if (!mergeResponse.success) {
+      ElMessage.error('合并视频分片失败: ' + mergeResponse.message)
+      return null
+    }
+    
+    uploadProgress.value = 100
+    return mergeResponse
+    
+  } catch (error) {
+    console.error('分片上传失败:', error)
+    ElMessage.error('视频上传失败，请稍后重试')
+    return null
+  }
 }
 
 // 重置上传表单
@@ -395,12 +521,12 @@ const resetUploadForm = () => {
 }
 // 上传内容
 const handleUpload = async () => {
-
   await uploadFormRef.value.validate(async (valid) => {
     if (!valid) return
 
     try {
       uploading.value = true
+      uploadProgress.value = 0
 
       // 2. 上传封面图片
       let coverResponse = null
@@ -414,13 +540,28 @@ const handleUpload = async () => {
         }
       }
 
-      // 3. 保存视频信息
+      // 3. 上传视频文件（如果有）
+      let videoResponse = null
+      if (uploadForm.videoFile) {
+        // 使用分片上传处理大文件
+        videoResponse = await uploadVideoWithChunks(uploadForm.videoFile)
+
+        if (!videoResponse || !videoResponse.success) {
+          ElMessage.error('视频上传失败')
+          uploading.value = false
+          return
+        }
+      }
+
+      // 4. 保存视频信息
       const videoData = {
         title: uploadForm.title,
         description: uploadForm.description,
         category: uploadForm.category,
         coverPath: coverResponse ? coverResponse.data.relativePath : null,
         coverUrl: coverResponse ? coverResponse.data.coverUrl : null,
+        videoPath: videoResponse ? videoResponse.data.relativePath : null,
+        videoUrl: videoResponse ? videoResponse.data.videoUrl : null,
         tags: uploadForm.tags.join(',')
       }
 
@@ -438,11 +579,13 @@ const handleUpload = async () => {
 
       // 刷新视频列表
       fetchVideos()
-      uploading.value = false
+      
     } catch (error) {
       console.error('视频上传失败:', error)
       ElMessage.error('视频上传失败，请稍后重试')
+    } finally {
       uploading.value = false
+      uploadProgress.value = 0
     }
   })
 }
@@ -535,19 +678,21 @@ const handleEpisodeImageChange = (file) => {
 // 处理剧集视频上传
 const handleEpisodeVideoChange = (file) => {
   const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
-  const isLt500M = file.raw.size / 1024 / 1024 < 500
+  const isLtLimit = file.raw.size / 1024 / 1024 < 1000 // 限制最大1GB
 
   if (!isVideo) {
     ElMessage.error('请上传正确的视频格式!')
     return false
   }
-  if (!isLt500M) {
-    ElMessage.error('视频大小不能超过 500MB!')
+  if (!isLtLimit) {
+    ElMessage.error('视频大小不能超过 1GB!')
     return false
   }
 
   episodeForm.episodeFile = file.raw
   episodeForm.episodesVideo = file.name
+  // 计算所需的分片数量
+  totalChunks.value = Math.ceil(file.raw.size / chunkSize)
 }
 
 // 上传剧集
@@ -557,6 +702,7 @@ const handleEpisodeUpload = async () => {
 
     try {
       episodeUploading.value = true
+      uploadProgress.value = 0
 
       // 上传剧集图片
       let imageResponse = null
@@ -570,11 +716,11 @@ const handleEpisodeUpload = async () => {
         }
       }
 
-      // 上传剧集视频
-      const videoResponse = await uploadVideo(episodeForm.episodeFile)
+      // 上传剧集视频（使用分片上传）
+      const videoResponse = await uploadVideoWithChunks(episodeForm.episodeFile)
 
-      if (!videoResponse.success) {
-        ElMessage.error('视频上传失败: ' + videoResponse.message)
+      if (!videoResponse || !videoResponse.success) {
+        ElMessage.error('视频上传失败')
         episodeUploading.value = false
         return
       }
@@ -605,6 +751,7 @@ const handleEpisodeUpload = async () => {
       ElMessage.error('剧集上传失败，请稍后重试')
     } finally {
       episodeUploading.value = false
+      uploadProgress.value = 0
     }
   })
 }
