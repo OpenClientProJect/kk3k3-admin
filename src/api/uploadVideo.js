@@ -51,3 +51,4 @@ export function uploadVideo(file) {
         data: formData
     })
 }
+

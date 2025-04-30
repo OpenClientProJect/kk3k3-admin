@@ -52,6 +52,9 @@
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item command="episode">
+                    添加剧集
+                  </el-dropdown-item>
                   <el-dropdown-item
                       divided
                       command="delete"
@@ -134,27 +137,6 @@
               </div>
             </el-form-item>
           </el-col>
-
-          <el-col :span="12">
-            <el-form-item label="视频文件" prop="videoFile">
-              <el-upload
-                  class="video-uploader"
-                  action="#"
-                  :auto-upload="false"
-                  :show-file-list="true"
-                  :limit="1"
-                  :on-change="handleVideoChange"
-                  :on-exceed="handleExceed"
-                  :before-remove="handleBeforeRemove">
-                <el-button type="primary">选择视频文件</el-button>
-                <template #tip>
-                  <div class="el-upload__tip">
-                    支持mp4、avi、mov等常见视频格式
-                  </div>
-                </template>
-              </el-upload>
-            </el-form-item>
-          </el-col>
         </el-row>
 
         <el-form-item label="标签" prop="tags">
@@ -189,6 +171,60 @@
         </span>
       </template>
     </el-dialog>
+
+    <el-dialog
+        v-model="showEpisodeDialog"
+        title="添加剧集"
+        width="650px"
+        :destroy-on-close="true"
+        :close-on-click-modal="false"
+    >
+      <el-form ref="episodeFormRef" :model="episodeForm" :rules="episodeRules" label-width="100px">
+        <el-form-item label="剧集标题" prop="episodesTitle">
+          <el-input v-model="episodeForm.episodesTitle" placeholder="请输入剧集标题"/>
+        </el-form-item>
+
+        <el-form-item label="剧集图片" prop="episodesImage">
+          <el-upload
+              class="cover-uploader"
+              action="#"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleEpisodeImageChange">
+            <img v-if="episodeImagePreview" :src="episodeImagePreview" class="cover-preview"/>
+            <el-icon v-else class="cover-uploader-icon">
+              <Plus/>
+            </el-icon>
+          </el-upload>
+          <div class="el-upload__tip">
+            点击上传剧集图片，支持jpg、png格式
+          </div>
+        </el-form-item>
+
+        <el-form-item label="剧集视频" prop="episodesVideo">
+          <el-upload
+              class="cover-uploader"
+              action="#"
+              :auto-upload="false"
+              :show-file-list="false"
+              :on-change="handleEpisodeVideoChange">
+            <el-icon class="cover-uploader-icon">
+              <Plus/>
+            </el-icon>
+          </el-upload>
+          <div class="el-upload__tip">
+            点击上传剧集视频，支持mp4格式
+          </div>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showEpisodeDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleEpisodeUpload" :loading="episodeUploading">添加剧集</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -201,7 +237,21 @@ import videoApi from '../api/video'
 import {saveVideo, uploadCover, uploadVideo} from "@/api/uploadVideo.js";
 
 const showUploadDialog = ref(false)
+const showEpisodeDialog = ref(false)
 const router = useRouter()
+
+// 剧集相关变量
+const episodeForm = reactive({
+  videoId: null,
+  episodesTitle: '',
+  episodesImage: '',
+  episodesVideo: '',
+  episodeFile: null,
+  imageFile: null
+})
+const episodeFormRef = ref(null)
+const episodeImagePreview = ref('')
+const episodeUploading = ref(false)
 
 // 视频相关变量
 const uploadFormRef = ref(null)
@@ -222,6 +272,17 @@ const uploadRules = {
   description: [
     {required: true, message: '请输入视频描述', trigger: 'blur'},
     {min: 5, max: 2000, message: '描述长度在5到2000个字符之间', trigger: 'blur'}
+  ]
+}
+
+// 剧集表单验证规则
+const episodeRules = {
+  episodesTitle: [
+    {required: true, message: '请输入剧集标题', trigger: 'blur'},
+    {min: 2, max: 50, message: '剧集标题长度在2到50个字符之间', trigger: 'blur'}
+  ],
+  episodesVideo: [
+    {required: true, message: '请上传剧集视频', trigger: 'change'}
   ]
 }
 
@@ -331,67 +392,57 @@ const resetUploadForm = () => {
   uploadForm.tags = []
   coverPreview.value = ''
 }
-// 上传视频
+// 上传内容
 const handleUpload = async () => {
-  if (!uploadForm.videoFile) {
-    ElMessage.error('请选择视频文件')
-    return
-  }
 
   await uploadFormRef.value.validate(async (valid) => {
     if (!valid) return
 
-    uploading.value = true
+    try {
+      uploading.value = true
 
-    // 1. 上传视频文件
-    const videoResponse = await uploadVideo(uploadForm.videoFile)
+      // 2. 上传封面图片
+      let coverResponse = null
+      if (uploadForm.coverFile) {
+        coverResponse = await uploadCover(uploadForm.coverFile)
 
-    if (!videoResponse.success) {
-      ElMessage.error('视频上传失败: ' + videoResponse.message)
-      uploading.value = false
-      return
-    }
+        if (!coverResponse.success) {
+          ElMessage.error('封面上传失败: ' + coverResponse.message)
+          uploading.value = false
+          return
+        }
+      }
 
-    // 2. 上传封面图片
-    let coverResponse = null
-    if (uploadForm.coverFile) {
-      coverResponse = await uploadCover(uploadForm.coverFile)
+      // 3. 保存视频信息
+      const videoData = {
+        title: uploadForm.title,
+        description: uploadForm.description,
+        category: uploadForm.category,
+        coverPath: coverResponse ? coverResponse.data.relativePath : null,
+        coverUrl: coverResponse ? coverResponse.data.coverUrl : null,
+        tags: uploadForm.tags.join(',')
+      }
 
-      if (!coverResponse.success) {
-        ElMessage.error('封面上传失败: ' + coverResponse.message)
+      const saveResponse = await saveVideo(videoData)
+
+      if (!saveResponse.success) {
+        ElMessage.error('视频信息保存失败: ' + saveResponse.message)
         uploading.value = false
         return
       }
-    }
 
-    // 3. 保存视频信息
-    const videoData = {
-      title: uploadForm.title,
-      description: uploadForm.description,
-      category: uploadForm.category,
-      videoPath: videoResponse.data.relativePath,
-      videoUrl: videoResponse.data.videoUrl,
-      coverPath: coverResponse ? coverResponse.data.relativePath : null,
-      coverUrl: coverResponse ? coverResponse.data.coverUrl : null,
-      tags: uploadForm.tags.join(',')
-    }
+      ElMessage.success('视频发布成功')
+      showUploadDialog.value = false
+      resetUploadForm()
 
-    const saveResponse = await saveVideo(videoData)
-
-    if (!saveResponse.success) {
-      ElMessage.error('视频信息保存失败: ' + saveResponse.message)
+      // 刷新视频列表
+      fetchVideos()
       uploading.value = false
-      return
+    } catch (error) {
+      console.error('视频上传失败:', error)
+      ElMessage.error('视频上传失败，请稍后重试')
+      uploading.value = false
     }
-
-    ElMessage.success('视频发布成功')
-    showUploadDialog.value = false
-    resetUploadForm()
-
-    // 加载我的视频列表
-    await loadMyVideos()
-    uploading.value = false
-    uploading.value = false
   })
 }
 
@@ -415,7 +466,12 @@ const rejectForm = reactive({
 const fetchVideos = async () => {
   loading.value = true
   try {
-    const response = await videoApi.getAllVideos({})
+    const response = await videoApi.getAllVideos({
+      page: query.page,
+      size: query.size,
+      keyword: query.keyword,
+      status: query.status
+    })
     videos.value = response.data.videos
     total.value = response.data.total
   } catch (error) {
@@ -440,24 +496,131 @@ const handlePreview = (id) => {
 // 命令处理
 const handleCommand = (command, row) => {
   switch (command) {
-    case 'approve':
-      handleApprove(row.id)
-      break
-    case 'reject':
-      handleReject(row.id)
-      break
-    case 'enable':
-      handleUpdateStatus(row.id, 1)
-      break
-    case 'disable':
-      handleUpdateStatus(row.id, 3)
-      break
     case 'delete':
       handleDelete(row.id)
+      break
+    case 'episode':
+      handleAddEpisode(row)
       break
   }
 }
 
+// 打开添加剧集对话框
+const handleAddEpisode = (row) => {
+  episodeForm.videoId = row.id
+  showEpisodeDialog.value = true
+}
+
+// 处理剧集图片上传
+const handleEpisodeImageChange = (file) => {
+  const isImage = file.raw.type.indexOf('image/') !== -1
+  const isLt2M = file.raw.size / 1024 / 1024 < 20
+
+  if (!isImage) {
+    ElMessage.error('剧集图片只能是图片格式!')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('剧集图片大小不能超过 20MB!')
+    return false
+  }
+
+  // 显示预览
+  episodeForm.imageFile = file.raw
+  const reader = new FileReader()
+  reader.readAsDataURL(file.raw)
+  reader.onload = () => {
+    episodeImagePreview.value = reader.result
+  }
+}
+
+// 处理剧集视频上传
+const handleEpisodeVideoChange = (file) => {
+  const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
+  const isLt500M = file.raw.size / 1024 / 1024 < 500
+
+  if (!isVideo) {
+    ElMessage.error('请上传正确的视频格式!')
+    return false
+  }
+  if (!isLt500M) {
+    ElMessage.error('视频大小不能超过 500MB!')
+    return false
+  }
+
+  episodeForm.episodeFile = file.raw
+  episodeForm.episodesVideo = file.name
+}
+
+// 上传剧集
+const handleEpisodeUpload = async () => {
+  await episodeFormRef.value.validate(async (valid) => {
+    if (!valid) return
+
+    try {
+      episodeUploading.value = true
+
+      // 上传剧集图片
+      let imageResponse = null
+      if (episodeForm.imageFile) {
+        imageResponse = await uploadCover(episodeForm.imageFile)
+
+        if (!imageResponse.success) {
+          ElMessage.error('图片上传失败: ' + imageResponse.message)
+          episodeUploading.value = false
+          return
+        }
+      }
+
+      // 上传剧集视频
+      const videoResponse = await uploadVideo(episodeForm.episodeFile)
+
+      if (!videoResponse.success) {
+        ElMessage.error('视频上传失败: ' + videoResponse.message)
+        episodeUploading.value = false
+        return
+      }
+
+      // 保存剧集信息
+      const episodeData = {
+        videoId: episodeForm.videoId,
+        episodesTitle: episodeForm.episodesTitle,
+        episodesImage: imageResponse ? imageResponse.data.coverUrl : null,
+        episodesVideo: videoResponse.data.videoUrl
+      }
+
+      // 调用API保存剧集信息
+      const saveResponse = await videoApi.addEpisode(episodeData)
+
+      if (!saveResponse.success) {
+        ElMessage.error('剧集信息保存失败: ' + saveResponse.message)
+        episodeUploading.value = false
+        return
+      }
+
+      ElMessage.success('剧集添加成功')
+      showEpisodeDialog.value = false
+      resetEpisodeForm()
+      
+    } catch (error) {
+      console.error('剧集上传失败:', error)
+      ElMessage.error('剧集上传失败，请稍后重试')
+    } finally {
+      episodeUploading.value = false
+    }
+  })
+}
+
+// 重置剧集表单
+const resetEpisodeForm = () => {
+  episodeFormRef.value && episodeFormRef.value.resetFields()
+  episodeForm.episodesTitle = ''
+  episodeForm.episodesImage = ''
+  episodeForm.episodesVideo = ''
+  episodeForm.episodeFile = null
+  episodeForm.imageFile = null
+  episodeImagePreview.value = ''
+}
 
 // 拒绝对话框
 const handleReject = (id) => {
@@ -489,7 +652,6 @@ const confirmReject = async () => {
     rejectSubmitting.value = false
   }
 }
-
 
 // 删除视频
 const handleDelete = async (id) => {
@@ -535,7 +697,6 @@ const formatDateTime = (dateTime) => {
     second: '2-digit'
   })
 }
-
 
 // 组件挂载后获取视频列表
 onMounted(() => {

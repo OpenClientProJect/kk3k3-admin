@@ -58,14 +58,15 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Refresh, VideoCamera, Timer, User, View, Picture } from '@element-plus/icons-vue'
 import adminApi from '../api/admin'
-import * as echarts from 'echarts'
+// 动态导入echarts而不是全量导入
+// import * as echarts from 'echarts'
 
 const router = useRouter()
 const videosChartRef = ref(null)
 const usersChartRef = ref(null)
 let videosChart = null
 let usersChart = null
-
+let echarts = null
 
 // 统计数据
 const stats = reactive({
@@ -85,6 +86,28 @@ const fetchStats = async () => {
   try {
     const response = await adminApi.getStats()
     Object.assign(stats, response.data)
+    // 动态导入echarts
+    if (!echarts) {
+      echarts = await import('echarts/core')
+      const { LineChart } = await import('echarts/charts')
+      const { 
+        GridComponent, 
+        TooltipComponent, 
+        TitleComponent,
+        LegendComponent
+      } = await import('echarts/components')
+      const { CanvasRenderer } = await import('echarts/renderers')
+      
+      echarts.use([
+        LineChart,
+        GridComponent,
+        TooltipComponent,
+        TitleComponent,
+        LegendComponent,
+        CanvasRenderer
+      ])
+    }
+    
     // 渲染图表
     initCharts()
   } catch (error) {
@@ -94,6 +117,8 @@ const fetchStats = async () => {
 
 // 初始化图表
 const initCharts = () => {
+  if (!echarts) return
+
   if (videosChartRef.value && stats.lastWeekVideos?.length) {
     // 创建视频图表
     if (!videosChart) {
