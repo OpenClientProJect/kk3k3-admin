@@ -44,17 +44,15 @@
             {{ formatDateTime(scope.row.create_time) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="270" align="center">
           <template #default="scope">
+            <el-button size="small" type="success" @click="handleAddEpisode(scope.row)">添加剧集</el-button>
             <el-dropdown @command="(cmd) => handleCommand(cmd, scope.row)" trigger="click">
               <el-button size="small" type="primary" text :icon="ArrowDown">
                 更多
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="episode">
-                    添加剧集
-                  </el-dropdown-item>
                   <el-dropdown-item
                       divided
                       command="delete"
@@ -203,18 +201,21 @@
 
         <el-form-item label="剧集视频" prop="episodesVideo">
           <el-upload
-              class="cover-uploader"
+              class="video-uploader"
               action="#"
               :auto-upload="false"
-              :show-file-list="false"
-              :on-change="handleEpisodeVideoChange">
-            <el-icon class="cover-uploader-icon">
-              <Plus/>
-            </el-icon>
+              :show-file-list="true"
+              :limit="1"
+              :on-change="handleEpisodeVideoChange"
+              :on-exceed="handleExceed"
+              :before-remove="handleBeforeRemove">
+            <el-button type="primary">选择视频文件</el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持mp4、avi、mov等常见视频格式
+              </div>
+            </template>
           </el-upload>
-          <div class="el-upload__tip">
-            点击上传剧集视频，支持mp4格式
-          </div>
         </el-form-item>
       </el-form>
 
@@ -498,9 +499,6 @@ const handleCommand = (command, row) => {
   switch (command) {
     case 'delete':
       handleDelete(row.id)
-      break
-    case 'episode':
-      handleAddEpisode(row)
       break
   }
 }
