@@ -227,7 +227,7 @@
         <!-- 上传进度条 -->
         <el-form-item v-if="episodeUploading && uploadProgress > 0" label="上传进度">
           <el-progress :percentage="uploadProgress" :format="percentFormat" />
-          <div class="upload-status">{{ uploadedChunks.value }}/{{ totalChunks.value }} 分片已上传</div>
+          <div class="upload-status">{{ uploadedChunks.value }}/{{ totalChunks.value }} 视频已上传</div>
         </el-form-item>
       </el-form>
 
