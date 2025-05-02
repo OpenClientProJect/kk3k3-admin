@@ -3,7 +3,7 @@
     <!-- 侧边栏 -->
     <el-aside :width="isCollapse ? '64px' : '200px'" class="admin-aside">
       <div class="logo">
-        <img src="../assets/Logo.svg" alt="Logo">
+        <img src="../../public/logo.jpg" alt="Logo">
         <span v-show="!isCollapse">视频管理后台</span>
       </div>
       <el-menu

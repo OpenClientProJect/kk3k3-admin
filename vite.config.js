@@ -19,15 +19,21 @@ export default defineConfig({
     chunkSizeWarningLimit: 800, // 提高警告阈值到800kb
     rollupOptions: {
       output: {
-        manualChunks: {
-          // 将echarts库单独打包
-          echarts: ['echarts'],
-          // 将element-plus单独打包
-          'element-plus': ['element-plus'],
-          // 将所有图标分组
-          'element-icons': ['@element-plus/icons-vue'],
-          // 核心依赖
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+        manualChunks: (id) => {
+          // 根据模块ID动态确定分块
+          if (id.includes('node_modules')) {
+            if (id.includes('echarts')) {
+              return 'echarts';
+            }
+            if (id.includes('element-plus') || id.includes('@element-plus')) {
+              return 'element-plus-all'; // 将Element Plus和图标放在同一块中
+            }
+            if (id.includes('vue') || id.includes('pinia')) {
+              return 'vue-vendor';
+            }
+            // 其他第三方库归入vendor
+            return 'vendor';
+          }
         }
       }
     }
