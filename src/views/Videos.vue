@@ -366,14 +366,9 @@ const handleAddTag = () => {
 // 处理封面图片上传
 const handleCoverChange = (file) => {
   const isImage = file.raw.type.indexOf('image/') !== -1
-  const isLt2M = file.raw.size / 1024 / 1024 < 20
 
   if (!isImage) {
     ElMessage.error('封面图片只能是图片格式!')
-    return false
-  }
-  if (!isLt2M) {
-    ElMessage.error('封面图片大小不能超过 20MB!')
     return false
   }
 
@@ -389,14 +384,9 @@ const handleCoverChange = (file) => {
 // 处理视频文件上传
 const handleVideoChange = (file) => {
   const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
-  const isLtLimit = file.raw.size / 1024 / 1024 < 1000 // 限制最大1GB
 
   if (!isVideo) {
     ElMessage.error('请上传正确的视频格式!')
-    return false
-  }
-  if (!isLtLimit) {
-    ElMessage.error('视频大小不能超过 1GB!')
     return false
   }
 
