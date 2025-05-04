@@ -23,9 +23,15 @@
         </el-menu-item>
         <el-menu-item index="/videos">
           <el-icon>
-            <Monitor/>
+            <VideoPlay/>
           </el-icon>
           <template #title>视频管理</template>
+        </el-menu-item>
+        <el-menu-item index="/comments">
+          <el-icon>
+            <ChatDotRound/>
+          </el-icon>
+          <template #title>评论管理</template>
         </el-menu-item>
       </el-menu>
     </el-aside>

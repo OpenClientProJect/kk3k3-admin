@@ -17,6 +17,12 @@ const routes = [
         component: () => import('../views/Videos.vue'),
         meta: { title: '视频管理' }
       },
+      {
+        path: '/comments',
+        name: 'Comments',
+        component: () => import('../views/Comments.vue'),
+        meta: { requiresAuth: true, title: '评论管理' }
+      },
     ]
   },
   {

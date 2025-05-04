@@ -1,4 +1,5 @@
 import { get, post } from '../utils/request'
+import {request} from "axios";
 
 const adminApi = {
   /**
@@ -34,6 +35,36 @@ const adminApi = {
     return get('/admin/stats')
   },
 
+}
+
+// 评论管理相关API
+export function getCommentList(params) {
+  return request({
+    url: '/api/admin/comments',
+    method: 'get',
+    params
+  })
+}
+
+export function deleteComment(commentId) {
+  return request({
+    url: `/api/admin/comments/${commentId}`,
+    method: 'delete'
+  })
+}
+
+export function restoreComment(commentId) {
+  return request({
+    url: `/api/admin/comments/${commentId}/restore`,
+    method: 'put'
+  })
+}
+
+export function getCommentDetail(commentId) {
+  return request({
+    url: `/api/admin//comment/list`,
+    method: 'get'
+  })
 }
 
 export default adminApi 
