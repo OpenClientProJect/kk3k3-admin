@@ -4,7 +4,7 @@ import router from '../router'
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: 'http://154.40.44.245:8080/api', // 基础URL
+  baseURL: 'http://127.0.0.1:8080/api', // 基础URL
 })
 
 // 请求拦截器

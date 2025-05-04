@@ -22,7 +22,6 @@
           <template #default="scope">
             <el-image
                 :src="scope.row.cover_url"
-                :preview-src-list="[scope.row.coverUrl]"
                 class="video-cover"
                 fit="cover"
                 lazy
@@ -38,7 +37,18 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip/>
-        <el-table-column prop="category" label="分类" width="100" align="center"/>
+        <el-table-column label="标签" width="150" align="center">
+          <template #default="scope">
+            <el-tag
+              v-for="tag in scope.row.tags ? scope.row.tags.split(',') : []"
+              :key="tag"
+              class="tag-item"
+              size="small"
+              style="margin: 2px">
+              {{ tag }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" align="center">
           <template #default="scope">
             {{ formatDateTime(scope.row.create_time) }}
@@ -946,4 +956,4 @@ onMounted(() => {
   align-items: center;
 }
 
-</style> 
+</style>
