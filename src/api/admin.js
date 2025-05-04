@@ -1,6 +1,5 @@
 import { get, post } from '../utils/request'
-import {request} from "axios";
-
+import request from "../utils/request";
 const adminApi = {
   /**
    * 管理员登录
