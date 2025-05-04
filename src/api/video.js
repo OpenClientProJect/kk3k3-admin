@@ -32,7 +32,7 @@ function getVideoDetail(id) {
  */
 function deleteVideo(id) {
     return request({
-        url: `/admin/video/delete/${id}`,
+        url: `/admin/video/${id}`,
         method: 'delete'
     })
 }
