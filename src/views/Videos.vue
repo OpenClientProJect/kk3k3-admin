@@ -678,14 +678,9 @@ const handleEpisodeImageChange = (file) => {
 // 处理剧集视频上传
 const handleEpisodeVideoChange = (file) => {
   const isVideo = /\.(mp4|avi|mov|wmv|flv|mkv)$/i.test(file.name)
-  const isLtLimit = file.raw.size / 1024 / 1024 < 1000 // 限制最大1GB
 
   if (!isVideo) {
     ElMessage.error('请上传正确的视频格式!')
-    return false
-  }
-  if (!isLtLimit) {
-    ElMessage.error('视频大小不能超过 1GB!')
     return false
   }
 
