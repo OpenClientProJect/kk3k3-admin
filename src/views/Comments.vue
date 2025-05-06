@@ -74,13 +74,7 @@
               {{ formatTime(row.createTime) }}
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="100">
-            <template #default="{ row }">
-              <el-tag v-if="row.status === 1" type="success">正常</el-tag>
-              <el-tag v-else type="danger">已删除</el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="150" fixed="right">
+            <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button 
                 v-if="row.status === 1" 
@@ -178,7 +172,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import adminApi, {getCommentDetail} from '../api/admin'
+import { getComments, deleteComment } from '../api/Comments'
 
 // 评论列表数据
 const comments = ref([])
@@ -215,15 +209,20 @@ const formatTime = (timeStr) => {
 const loadComments = async () => {
   loading.value = true
   try {
-    const params = {
-      page: currentPage.value,
-      size: pageSize.value,
-      keyword: searchQuery.value,
-      status: searchStatus.value
+    const res = await getComments()
+    if (res.success && res.data) {
+      comments.value = res.data
+      total.value = res.data.length // 如果后端提供总数，可以使用 res.total
+    } else {
+      comments.value = []
+      total.value = 0
+      ElMessage.warning(res.message || '获取评论列表失败')
     }
-
-    const res = await getCommentDetail()
-    console.log(res.data)
+  } catch (error) {
+    console.error('获取评论列表失败:', error)
+    ElMessage.error('获取评论列表失败，请稍后重试')
+    comments.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -261,15 +260,16 @@ const handleDelete = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // 实际使用时需要替换为真实的API调用
-      // await adminApi.deleteComment(row.id)
-      
-      // 模拟API调用
-      ElMessage.success('删除评论成功')
-      // 更新本地数据
-      const index = comments.value.findIndex(item => item.id === row.id)
-      if (index !== -1) {
-        comments.value[index].status = 0
+      const res = await deleteComment(row.id, 0)
+      if (res.success) {
+        ElMessage.success(res.message || '删除评论成功')
+        // 更新本地数据
+        const index = comments.value.findIndex(item => item.id === row.id)
+        if (index !== -1) {
+          comments.value[index].status = 0
+        }
+      } else {
+        ElMessage.error(res.message || '删除评论失败')
       }
     } catch (error) {
       console.error('删除评论失败:', error)
@@ -286,15 +286,16 @@ const handleRestore = (row) => {
     type: 'warning'
   }).then(async () => {
     try {
-      // 实际使用时需要替换为真实的API调用
-      // await adminApi.restoreComment(row.id)
-      
-      // 模拟API调用
-      ElMessage.success('恢复评论成功')
-      // 更新本地数据
-      const index = comments.value.findIndex(item => item.id === row.id)
-      if (index !== -1) {
-        comments.value[index].status = 1
+      const res = await deleteComment(row.id, 1)
+      if (res.success) {
+        ElMessage.success(res.message || '恢复评论成功')
+        // 更新本地数据
+        const index = comments.value.findIndex(item => item.id === row.id)
+        if (index !== -1) {
+          comments.value[index].status = 1
+        }
+      } else {
+        ElMessage.error(res.message || '恢复评论失败')
       }
     } catch (error) {
       console.error('恢复评论失败:', error)
